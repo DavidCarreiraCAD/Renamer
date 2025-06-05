@@ -76,7 +76,7 @@ class RenamerGUI:
                        variable=self.var_selecionar_todos,
                        command=self._checkbox_selecionar_todos).pack(side=tk.LEFT, padx=10)
 
-        tk.Checkbutton(frame_checks_gerais, text="Deselecionar todos",
+        tk.Checkbutton(frame_checks_gerais, text="Selecionar nenhum",
                        variable=self.var_deselecionar_todos,
                        command=self._checkbox_deselecionar_todos).pack(side=tk.LEFT, padx=10)
 
@@ -231,24 +231,38 @@ class RenamerGUI:
             self._atualizar_lista(caminhos)
 
     def _atualizar_lista(self, caminhos):
-            for widget in self.scroll_frame.winfo_children():
-                widget.destroy()
+        # Normalizar e eliminar duplicados internos
+        caminhos = list(dict.fromkeys([os.path.normcase(os.path.abspath(c)) for c in caminhos]))
 
-            for caminho in caminhos:
-                frame = tk.Frame(self.scroll_frame, bg="white")
-                frame.pack(fill=tk.X, pady=1)
+        # Ignorar os que já existem (também normalizados)
+        arquivos_normalizados = set(os.path.normcase(os.path.abspath(a)) for a in self.arquivos)
+        novos = [c for c in caminhos if c not in arquivos_normalizados]
+        self.arquivos.extend(novos)
 
-                var = tk.BooleanVar()
-                chk = tk.Checkbutton(frame, variable=var, anchor="w", justify="left", bg="white")
-                chk.var = var
-                chk.file_path = caminho
-                chk.pack(side=tk.LEFT, padx=(5, 5))
+        for caminho in novos:
+            frame = tk.Frame(self.scroll_frame, bg="white")
+            frame.pack(fill=tk.X, pady=1)
 
-                label_nome = tk.Label(frame, text=os.path.basename(caminho), name="label_nome", bg="white", width=50, anchor="w")
-                label_nome.pack(side=tk.LEFT, padx=(0, 10))
+            var = tk.BooleanVar()
+            chk = tk.Checkbutton(frame, variable=var, anchor="w", justify="left", bg="white")
+            chk.var = var
+            chk.file_path = caminho
+            chk.pack(side=tk.LEFT, padx=(5, 5))
 
-                label_preview = tk.Label(frame, text="", name="label_preview", bg="white", fg="gray", width=50, anchor="w")
-                label_preview.pack(side=tk.LEFT)
+            label_nome = tk.Label(frame, text=os.path.basename(caminho), name="label_nome", bg="white", width=50, anchor="w")
+            label_nome.pack(side=tk.LEFT, padx=(0, 10))
+
+            label_preview = tk.Label(frame, text="", name="label_preview", bg="white", fg="gray", width=50, anchor="w")
+            label_preview.pack(side=tk.LEFT)
+
+            def toggle_check(event, var=var):
+                var.set(not var.get())
+                self._atualizar_checkbox_geral()
+
+            frame.bind("<Button-1>", toggle_check)
+
+
+
 
 
 
