@@ -1,15 +1,25 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 from tkinter import filedialog, ttk
 
+
 class RenamerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Renomeador de Ficheiros")
-        self.root.geometry("800x500")
+        self.root.geometry("1000x500")
+                # Caminho do ícone (compatível com PyInstaller)
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.abspath(".")
+
+        icon_path = os.path.join(base_path, "COBA_LOGO.ico")
+        self.root.iconbitmap(icon_path)
 
         self.arquivos = []
         self.opcoes_vars = {
@@ -26,27 +36,44 @@ class RenamerGUI:
 
     def _criar_interface(self):
         # ---------- Janela principal ----------
-        self.root.title("Gestor de Ficheiros")
-        self.root.geometry("700x500")
+        self.root.title("Coba Renamer")
+        self.root.geometry("800x500")
         self.root.resizable(False, False)  # Impede redimensionamento da janela
 
-        # ---------- Estilo ----------
-        estilo = ttk.Style()
-        estilo.configure("TButton", padding=6, width=20)
+        # Estilos ttk
+        style = ttk.Style()
+        style.configure("BotaoGrande.TButton", padding=(10, 2))   # Alto
+        style.configure("BotaoPequeno.TButton", padding=(10, 2))   # Baixo
+
+        # Botões "Adicionar" (mais altos)
+        botao_grande = {"width": 20, "style": "BotaoGrande.TButton"}
+
+        # Botões "Preview" e "Renomear" (mais baixos)
+        botao_pequeno = {"width": 10, "style": "BotaoPequeno.TButton"}
 
         # ---------- Frame Top com Botões ----------
         frame_top = tk.Frame(self.root)
-        frame_top.pack(pady=10)
+        frame_top.pack(fill=tk.X, pady=10, padx=10)
 
-        botoes_textos = [
-            ("Adicionar Ficheiros", self.adicionar_ficheiros),
-            ("Adicionar Pasta", self.adicionar_pasta),
-            ("Preview", lambda: self._renomear_ou_preview(aplicar=False)),
-            ("Renomear", lambda: self._renomear_ou_preview(aplicar=True))
-        ]
+        frame_botoes_esquerda = tk.Frame(frame_top)
+        frame_botoes_esquerda.pack(side=tk.RIGHT)
 
-        for texto, comando in botoes_textos:
-            ttk.Button(frame_top, text=texto, command=comando).pack(side=tk.LEFT, padx=10)
+        frame_botoes_direita = tk.Frame(frame_top)
+        frame_botoes_direita.pack(side=tk.LEFT)
+
+        # Botões do lado esquerdo (pequenos)
+        ttk.Button(frame_botoes_esquerda, text="Preview",
+                   command=lambda: self._renomear_ou_preview(aplicar=False), **botao_pequeno).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(frame_botoes_esquerda, text="Renomear",
+                   command=lambda: self._renomear_ou_preview(aplicar=True), **botao_pequeno).pack(side=tk.LEFT, padx=5)
+
+        # Botões do lado direito (grandes)
+        ttk.Button(frame_botoes_direita, text="Adicionar Ficheiros",
+                   command=self.adicionar_ficheiros, **botao_grande).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(frame_botoes_direita, text="Adicionar Pasta",
+                   command=self.adicionar_pasta, **botao_grande).pack(side=tk.LEFT, padx=5)
 
 
                # ---------- Lista de ficheiros com fundo branco dividida em 2 colunas ----------
@@ -67,7 +94,8 @@ class RenamerGUI:
 
         # ---------- Seleção Geral ----------
         frame_checks_gerais = tk.Frame(self.root)
-        frame_checks_gerais.pack(pady=5)
+        frame_checks_gerais.pack(pady=5, anchor="w")  # Alinha o frame à esquerda
+
 
         self.var_selecionar_todos = tk.BooleanVar()
         self.var_deselecionar_todos = tk.BooleanVar()
@@ -231,14 +259,18 @@ class RenamerGUI:
             self._atualizar_lista(caminhos)
 
     def _atualizar_lista(self, caminhos):
-        # Normalizar e eliminar duplicados internos
-        caminhos = list(dict.fromkeys([os.path.normcase(os.path.abspath(c)) for c in caminhos]))
+        # Caminhos absolutos originais (mantêm capitalização correta)
+        caminhos_abs = [os.path.abspath(c) for c in caminhos]
 
-        # Ignorar os que já existem (também normalizados)
-        arquivos_normalizados = set(os.path.normcase(os.path.abspath(a)) for a in self.arquivos)
-        novos = [c for c in caminhos if c not in arquivos_normalizados]
+        # Caminhos normalizados para comparação de duplicados (sem afetar nomes reais)
+        caminhos_norm = [os.path.normcase(c) for c in caminhos_abs]
+        arquivos_norm = set(os.path.normcase(a) for a in self.arquivos)
+
+        # Eliminar duplicados com base na versão normalizada
+        novos = [c for c, norm in zip(caminhos_abs, caminhos_norm) if norm not in arquivos_norm]
         self.arquivos.extend(novos)
 
+        # Criar entradas na interface
         for caminho in novos:
             frame = tk.Frame(self.scroll_frame, bg="white")
             frame.pack(fill=tk.X, pady=1)
@@ -260,9 +292,6 @@ class RenamerGUI:
                 self._atualizar_checkbox_geral()
 
             frame.bind("<Button-1>", toggle_check)
-
-
-
 
 
 
